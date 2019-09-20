@@ -9,6 +9,7 @@ import featuretools as ft
 import featuretools.variable_types as vtypes
 import pandas as pd
 import pickle
+from sklearn.ensemble import RandomForestClassifier
 from flask_table import Table, Col
 import numpy as np
 
@@ -24,11 +25,6 @@ host = 'localhost'
 dbname = 'dental_predictions'
 db = create_engine('postgres://%s%s/%s'%(user,host,dbname))
 con = psycopg2.connect(database = dbname, user = user)
-
-class Results(Table):
-    id = Col('Patient ID')
-    percentage = Col('No Show Percentage')
-    noshow = Col('Will they likely cancel?')
 
 
 
@@ -101,7 +97,7 @@ def upload():
                                 target_entity='appointments',
                                 agg_primitives=['count', 'percent_true', 'num_true', 'trend', 'skew', 'all', 'std',
                                                 'max', 'mean', 'min', 'median', 'num_unique'],
-                                max_depth=1,
+                                max_depth=3,
                                 trans_primitives=['day', 'month', 'year', 'num_words', 'num_characters'],
                                 cutoff_time=cutoff_times,
                                 verbose=True,
@@ -118,9 +114,14 @@ def upload():
         pkl_file = open('insightMVP_model.pkl', 'rb')
         XGBmodel = pickle.load(pkl_file)
 
-        percentages = XGBmodel.predict_proba(final_data)*100
+        id = final_data['PatientId']
+        y_pred_model_xgb = XGBmodel.predict_proba(final_data)[:,1]
+        percentage= pd.DataFrame({'percent_noshow': y_pred_model_xgb})*100
 
-        return render_template('upload2.html', table=percentages)
+        results=pd.concat([id.reset_index(drop=True), percentage.reset_index(drop=True)],axis=1)
+
+
+        return render_template('upload2.html', tables=[results.to_html()])
     return render_template('index.html')
 
 if __name__ == '__main__':
