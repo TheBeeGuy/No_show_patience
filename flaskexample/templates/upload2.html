@@ -59,9 +59,7 @@
     <p class="lead">Use No Show Patience to guide strategic double booking of likely no-show patients!<br> Please upload your schedule in CSV format</p>
   </div>
 
-    {% if data %}
-    <p>Data Found!!!</p>
-    {% endif %}
+
     <h5>Upload Schedule in CSV format</h5>
     <form action ="/uploader" method=post enctype=multipart/form-data>
       <input type=file name=file>
@@ -69,7 +67,8 @@
     </form>
 <br><br>
 
-Shape is: {{ shape }}
+  <h4>Here are your patient predictions:</h4>
+  {{ table }}
 
 </main><!-- /.container -->
 <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
