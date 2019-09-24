@@ -11,7 +11,7 @@ import multiprocess as mp
 cwd = os.getcwd()
 
 def trainxgb(params):
-    full_dataset = pd.read_pickle(cwd + "/data/postFT2018.pkl")
+    full_dataset = pd.read_pickle(cwd + '/hyperparameter_tuning/postFT2018.pkl')
     X = full_dataset.drop(['noshow'],axis=1)
     X = X.drop(X.filter(regex='MODE',axis=1).columns, axis=1)
     y = full_dataset[['noshow']]
@@ -22,8 +22,8 @@ def trainxgb(params):
                                         y[X['MONTH(AppointmentDate)']>cutoff_month])
     X_train, X_test = X_train.fillna(X_train.mean()), X_test.fillna(X_test.mean())
     startTime = datetime.now()
-    model_xgb = (XGBClassifier(n_estimators=int(params['n_estimators']), max_depth = int(params['max_depth']),
-                               eta = params['eta'], subsample = params['subsample'], alpha= params['alpha'], n_thread = mp.cpu_count(),
+    model_xgb = (XGBClassifier(n_estimators=1914, max_depth = 25,
+                               eta = 0.15076, subsample = 0.62141, alpha= params['alpha'], n_thread = 4,
                                tree_method = 'hist', random_state=1).fit(X_train,y_train.values.ravel()))
     y_pred_model_xgb = pd.DataFrame(model_xgb.predict_proba(X_test)[:,1])
     finishTime = datetime.now()
