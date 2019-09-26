@@ -19,8 +19,14 @@ from werkzeug.utils import secure_filename
 
 cwd = os.getcwd()
 
+##read in secret keys stored in .env file
+load_dotenv('.env')
+SECRET = os.environ['dark_sky_secret']
+LAT = os.environ['LAT']
+LONG = os.environ['LONG']
 
-user = 'aishagharsalli' #add your username here (same as previous postgreSQL)
+
+user = username #add your username here (same as previous postgreSQL)
 host = 'localhost'
 dbname = 'dental_predictions'
 db = create_engine('postgres://%s%s/%s'%(user,host,dbname))
