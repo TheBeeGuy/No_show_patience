@@ -2,18 +2,14 @@ from flask import render_template, request
 from flaskexample import app
 from sqlalchemy import create_engine
 # from sqlalchemy_utils import database_exists, create_database
-import pandas as pd
 import psycopg2
 import os
 import featuretools as ft
 import featuretools.variable_types as vtypes
 import pandas as pd
 import pickle
-from sklearn.ensemble import RandomForestClassifier
-from flask_table import Table, Col
+from dotenv import load_dotenv
 import numpy as np
-
-from werkzeug.utils import secure_filename
 
 
 
@@ -21,16 +17,18 @@ cwd = os.getcwd()
 
 ##read in secret keys stored in .env file
 load_dotenv('.env')
+
 SECRET = os.environ['dark_sky_secret']
 LAT = os.environ['LAT']
 LONG = os.environ['LONG']
 
 
-user = username #add your username here (same as previous postgreSQL)
+user = os.environ['username'] #add your username here (same as previous postgreSQL)
 host = 'localhost'
 dbname = 'dental_predictions'
 db = create_engine('postgres://%s%s/%s'%(user,host,dbname))
 con = psycopg2.connect(database = dbname, user = user)
+
 
 
 
@@ -46,11 +44,23 @@ def upload():
         full_dataset.AppointmentDate = (pd.to_datetime(full_dataset.AppointmentDate) +
                                         (pd.Timedelta(days=1) - pd.Timedelta(seconds=1)) * (full_dataset.noshow))
 
+        ##load in weather data
+        weather = pickle.load(open('data/weather2018.pkl', 'rb'))
+        weather = pd.DataFrame(weather)
+
         # ##fill NAs
         # # Explicitly impute values for missing fields for RF and Log
         # full_dataset = full_dataset.fillna(full_dataset.mean())
         # full_dataset = full_dataset.fillna(0)
 
+        def merge_appt_weather(appointments_df, weather_df, appt_date):  # takes appointments, weather, and column of appointment date
+            x = appointments_df[appt_date].dt.round('60min')
+            appointments_df['datetime'] = pd.to_datetime(x)
+            weather_df['datetime'] = pd.to_datetime(weather_df['time'], unit='s').dt.round('60min')
+            appointments_df = appointments_df.merge(weather_df, on='datetime', how="left")
+            return appointments_df
+        appt_date = 'AppointmentDate'
+        full_dataset = merge_appt_weather(full_dataset, weather, appt_date)
 
         #prepare for feature engineering using feature tools
         variable_types = {'PatientId': vtypes.Numeric, 'newbie': vtypes.Boolean, 'insuranceDummy': vtypes.Boolean,
@@ -61,13 +71,23 @@ def upload():
                           'insurance': vtypes.Categorical, 'provider': vtypes.Categorical,
                           'source': vtypes.Categorical, 'procedure': vtypes.Categorical,
                           'weekday': vtypes.Categorical, 'apptType': vtypes.Categorical,
-                          "newpatientfile": vtypes.Ordinal, "Age_npf": vtypes.Numeric, "Patient": vtypes.Text}
+                          "newpatientfile": vtypes.Ordinal, "Age_npf": vtypes.Numeric, "Patient": vtypes.Text,
+                          'summary': vtypes.Text, 'icon': vtypes.Text, 'precipIntensity': vtypes.Numeric,
+                          'temperature': vtypes.Numeric, 'apparentTemperature': vtypes.Numeric,
+                          'dewPoint': vtypes.Numeric,
+                          'humidity': vtypes.Numeric, 'pressure': vtypes.Numeric, 'windSpeed': vtypes.Numeric,
+                          'windGust': vtypes.Numeric, 'windBearing': vtypes.Numeric, 'cloudCover': vtypes.Numeric,
+                          }
         variable_list = (['PatientId', 'AppointmentDate', 'newbie',
                           'insuranceDummy', 'guarantorIsPatient', 'loyalty', 'noshow',
                           'PatientEmail', 'GuarantorEmail', 'PatientPhone1',
                           'patientEmailDomain', 'guarantorEmailDomain', 'patientPhone1AreaCode',
                           'insurance', 'provider', 'source', 'procedure', 'weekday', 'apptType',
-                          "newpatientfile", "Age_npf", "Patient", 'AppointmentId'])
+                          "newpatientfile", "Age_npf", "Patient", 'AppointmentId', 'summary', 'icon',
+                          'precipIntensity', 'temperature',
+                          'apparentTemperature', 'dewPoint', 'humidity', 'pressure', 'windSpeed',
+                          'windGust', 'windBearing', 'cloudCover'])
+
         # Make an entity named 'appointments' which stores dataset metadata with the dataframe
         es = ft.EntitySet('Appointments')
         es = es.entity_from_dataframe(entity_id="appointments",
@@ -91,10 +111,6 @@ def upload():
         es.normalize_entity('appointments', 'weekdays', 'weekday', make_time_index=True)
         es.normalize_entity('appointments', 'apptTypes', 'apptType', make_time_index=True)
 
-        variable_list = (['PatientId', 'AppointmentDate', 'newbie',
-                          'insuranceDummy', 'guarantorIsPatient', 'loyalty', 'noshow',
-                          'PatientEmail', 'GuarantorEmail', 'PatientPhone1', 'insurance',
-                          'provider', 'procedure', 'weekday', 'apptType', 'AppointmentId'])
         cutoff_times = es['appointments'].df[['AppointmentId', 'AppointmentDate']]
         cat_cols = ['insurance', 'provider', 'procedure', 'patientEmailDomain', 'guarantorEmailDomain',
                     'patientPhone1AreaCode', 'weekday', 'apptType', 'source']
@@ -111,9 +127,6 @@ def upload():
                                 # approximate = "1 day",
                                 chunk_size=50,
                                 n_jobs=1)
-        cutoff_times = es['appointments'].df[['AppointmentId', 'AppointmentDate']]
-        cat_cols = ['insurance', 'provider', 'procedure', 'patientEmailDomain', 'guarantorEmailDomain',
-                    'patientPhone1AreaCode', 'weekday', 'apptType', 'source']
 
         final_data = pd.concat([X_ft], axis=1).drop(cat_cols, axis=1).drop(['noshow'],axis=1)
 
