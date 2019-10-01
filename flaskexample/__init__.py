@@ -3,7 +3,7 @@ import os
 
 
 ALLOWED_EXTENSIONS = set(['csv'])
-UPLOAD_FOLDER = './flaskexample/uploads'
+UPLOAD_FOLDER = os.path.join('static', 'uploads')
 cwd = os.getcwd()
 
 app = Flask(__name__)

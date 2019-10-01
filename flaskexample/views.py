@@ -11,8 +11,6 @@ import pickle
 from dotenv import load_dotenv
 import numpy as np
 
-
-
 cwd = os.getcwd()
 
 ##read in secret keys stored in .env file
@@ -34,7 +32,18 @@ con = psycopg2.connect(database = dbname, user = user)
 
 @app.route('/',  methods=['GET', 'POST'])
 def index():
-    return render_template("index.html")
+    full_filename = os.path.join(app.config['UPLOAD_FOLDER'], 'dental_cartoon.jpg')
+    return render_template("index.html", user_image = full_filename)
+
+@app.route('/cover',  methods=['GET', 'POST'])
+def cover():
+    full_filename = os.path.join(app.config['UPLOAD_FOLDER'], 'dental_cartoon.jpg')
+    return render_template("cover.html", user_image = full_filename)
+
+@app.route('/tradeoff', methods=['GET', 'POST'])
+def tradeoff():
+    full_filename = os.path.join(app.config['UPLOAD_FOLDER'], 'dental_cartoon.jpg')
+    return render_template("tradeoff.html", user_image = full_filename)
 
 
 @app.route('/uploader', methods=['GET', 'POST'])
@@ -119,7 +128,7 @@ def upload():
                                 target_entity='appointments',
                                 agg_primitives=['count', 'percent_true', 'num_true', 'trend', 'skew', 'all', 'std',
                                                 'max', 'mean', 'min', 'median', 'num_unique'],
-                                max_depth=3,
+                                max_depth=1,
                                 trans_primitives=['day', 'month', 'year', 'num_words', 'num_characters'],
                                 cutoff_time=cutoff_times,
                                 verbose=True,
@@ -130,17 +139,25 @@ def upload():
 
         final_data = pd.concat([X_ft], axis=1).drop(cat_cols, axis=1).drop(['noshow'],axis=1)
 
-        pkl_file = open('insightMVP_model.pkl', 'rb')
+        # insightMVP_model_simple.pkl has 1 max depth feature engineering
+        pkl_file = open('insightMVP_model_simple.pkl', 'rb')
         XGBmodel = pickle.load(pkl_file)
 
         id = final_data['PatientId']
         y_pred_model_xgb = XGBmodel.predict_proba(final_data)[:,1]
-        percentage= pd.DataFrame({'percent_noshow': y_pred_model_xgb})*100
+        percentage= pd.DataFrame({'percent_noshow': y_pred_model_xgb})*1000
 
         results=pd.concat([id.reset_index(drop=True), percentage.reset_index(drop=True)],axis=1)
 
+        def highlight_greaterthan(s, threshold, column):
+            is_max = pd.Series(data=False, index=s.index)
+            is_max[column] = s.loc[column] >= threshold
+            return ['background-color: red' if is_max.any() else '' for v in is_max]
 
-        return render_template('upload2.html', tables=[results.to_html()])
+        style1 = results.style.apply(highlight_greaterthan, threshold=75, column=['percent_noshow'], axis=1)
+        df_html = style1.render()
+
+        return render_template('uploaded_csv_block.html', test= df_html)
     return render_template('index.html')
 
 if __name__ == '__main__':
