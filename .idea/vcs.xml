@@ -4,6 +4,7 @@
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/LightGBM" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/LightGBM/compute" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/No_Show_Patience_ElasticBeanstalk/aws-elastic-beanstalk-cli-setup" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/hyperparameter_tuning/LightGBM" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/hyperparameter_tuning/LightGBM/compute" vcs="Git" />
   </component>

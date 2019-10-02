@@ -9,4 +9,4 @@ cwd = os.getcwd()
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-from flaskexample import views
+from NoShowPatience import views
