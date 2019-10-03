@@ -1,0 +1,26 @@
+{% extends "index.html" %}
+
+
+
+{% block upload_link %}
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.4.4/jquery.js"></script>
+<script type="text/javascript">
+
+$(document).ready(function(){
+    $('#table_id td.y_n').each(function(){
+        if ($(this).text() > 0.15) {
+            $(this).css('background-color','#f00');
+        }
+    });
+});
+
+</script>
+
+  <h4>Here are your no-show patient predictions:</h4>
+
+  Patients with probability >80% will likely be no-shows!
+
+{{ test|safe }}
+
+
+{% endblock %}
